@@ -177,6 +177,54 @@ class AdsTest(unittest.TestCase):
         )
         self.assertEqual(pyads.size_of_structure(structure_def * 5), c_ubyte*1185)
 
+    def test_list_from_bytes(self):
+        # type: () -> None
+        """Test list_from_bytes function"""
+        structure_def = (
+            ('rVar', pyads.PLCTYPE_LREAL, 1),
+            ('sVar', pyads.PLCTYPE_STRING, 2, 35),
+            ('rVar1', pyads.PLCTYPE_REAL, 4),
+            ('iVar', pyads.PLCTYPE_DINT, 5),
+            ('iVar1', pyads.PLCTYPE_INT, 3),
+            ('ivar2', pyads.PLCTYPE_UDINT, 6),
+            ('iVar3', pyads.PLCTYPE_UINT, 7),
+            ('iVar4', pyads.PLCTYPE_BYTE, 1),
+            ('iVar5', pyads.PLCTYPE_SINT, 1),
+            ('iVar6', pyads.PLCTYPE_USINT, 1),
+            ('bVar', pyads.PLCTYPE_BOOL, 4),
+            ('iVar7', pyads.PLCTYPE_WORD, 1),
+            ('iVar8', pyads.PLCTYPE_DWORD, 1),
+        )
+
+        # TODO tests, need to define some known byte values in above struct
+
+        # tests for incorrect definitions
+        structure_def = (
+            ('sVar', pyads.PLCTYPE_STRING, 4),
+            ('rVar', 1, 1),
+            ('iVar', pyads.PLCTYPE_DINT, 1),
+        )
+        with self.assertRaises(RuntimeError):
+            pyads.list_from_bytes([], structure_def)
+
+        structure_def = (
+            ('sVar', pyads.PLCTYPE_STRING, 4),
+            (pyads.PLCTYPE_REAL, 1),
+            ('iVar', pyads.PLCTYPE_DINT, 1),
+        )
+        with self.assertRaises(ValueError):
+            pyads.list_from_bytes([], structure_def)
+
+        structure_def = (
+            ('sVar', pyads.PLCTYPE_STRING, 4),
+            ('rVar', pyads.PLCTYPE_REAL, ''),
+            ('iVar', pyads.PLCTYPE_DINT, 1),
+            ('iVar1', pyads.PLCTYPE_INT, 3),
+        )
+        with self.assertRaises(TypeError):
+            pyads.list_from_bytes([], structure_def)
+
+
 
 if __name__ == "__main__":
     unittest.main()
