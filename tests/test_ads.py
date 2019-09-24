@@ -177,9 +177,9 @@ class AdsTest(unittest.TestCase):
         )
         self.assertEqual(pyads.size_of_structure(structure_def * 5), c_ubyte*1185)
 
-    def test_list_from_bytes(self):
+    def test_dict_from_bytes(self):
         # type: () -> None
-        """Test list_from_bytes function"""
+        """Test dict_from_bytes function"""
         structure_def = (
             ('rVar', pyads.PLCTYPE_LREAL, 1),
             ('sVar', pyads.PLCTYPE_STRING, 2, 35),
@@ -197,6 +197,34 @@ class AdsTest(unittest.TestCase):
         )
 
         # TODO tests, need to define some known byte values in above struct
+        values = {
+            'rVar': 1.11,
+            'sVar': ['Hello', 'World'],
+            'rVar1': [2.25, 2.25, 2.5, 2.75],
+            'iVar': [3, 4, 5, 6, 7],
+            'iVar1': [8, 9, 10],
+            'ivar2': [11, 12, 13, 14, 15, 16],
+            'iVar3': [17, 18, 19, 20, 21, 22, 23],
+            'iVar4': 24,
+            'iVar5': 25,
+            'iVar6': 27,
+            'bVar': [True, False, True, False],
+            'iVar7': 27,
+            'iVar8': 28
+        }
+
+        bytes_list = [195, 245, 40, 92, 143, 194, 241, 63, 72, 101, 108, 108, 111,
+                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 87, 111, 114, 108, 100, 0,
+                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 64, 0, 0, 16, 64, 0,
+                      0, 32, 64, 0, 0, 48, 64, 3, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0,
+                      6, 0, 0, 0, 7, 0, 0, 0, 8, 0, 9, 0, 10, 0, 11, 0, 0, 0, 12,
+                      0, 0, 0, 13, 0, 0, 0, 14, 0, 0, 0, 15, 0, 0, 0, 16, 0, 0, 0,
+                      17, 0, 18, 0, 19, 0, 20, 0, 21, 0, 22, 0, 23, 0, 24, 25, 26,
+                      1, 0, 1, 0, 27, 0, 28, 0, 0, 0]
+        self.assertEqual(values,
+                         pyads.dict_from_bytes(bytes_list, structure_def))
 
         # tests for incorrect definitions
         structure_def = (
@@ -205,7 +233,7 @@ class AdsTest(unittest.TestCase):
             ('iVar', pyads.PLCTYPE_DINT, 1),
         )
         with self.assertRaises(RuntimeError):
-            pyads.list_from_bytes([], structure_def)
+            pyads.dict_from_bytes([], structure_def)
 
         structure_def = (
             ('sVar', pyads.PLCTYPE_STRING, 4),
@@ -213,7 +241,7 @@ class AdsTest(unittest.TestCase):
             ('iVar', pyads.PLCTYPE_DINT, 1),
         )
         with self.assertRaises(ValueError):
-            pyads.list_from_bytes([], structure_def)
+            pyads.dict_from_bytes([], structure_def)
 
         structure_def = (
             ('sVar', pyads.PLCTYPE_STRING, 4),
@@ -222,8 +250,9 @@ class AdsTest(unittest.TestCase):
             ('iVar1', pyads.PLCTYPE_INT, 3),
         )
         with self.assertRaises(TypeError):
-            pyads.list_from_bytes([], structure_def)
+            pyads.dict_from_bytes([], structure_def)
 
+        # TODO tests for byte size not equal to structure def struct.error
 
 
 if __name__ == "__main__":

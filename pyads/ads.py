@@ -12,6 +12,7 @@ from typing import Optional, Union, Tuple, Any, Type, Callable, Dict
 from datetime import datetime
 import struct
 from ctypes import memmove, addressof, c_ubyte, Structure, sizeof
+from collections import OrderedDict
 
 from .utils import platform_is_linux
 from .filetimes import filetime_to_dt
@@ -482,8 +483,8 @@ def size_of_structure(structure_def):
     return c_ubyte * num_of_bytes
 
 
-def list_from_bytes(byte_list, structure_def):
-    """Return a list of PLC values from a list of BYTE values read from PLC.
+def dict_from_bytes(byte_list, structure_def):
+    """Return an ordered dict of PLC values from a list of BYTE values read from PLC.
 
     :param byte_list: list of byte values for an entire structure
     :param tuple structure_def: special tuple defining the structure and
@@ -512,9 +513,9 @@ def list_from_bytes(byte_list, structure_def):
             If array of structure is to be calculated use
             'list_from_bytes(structure_def * X)'
 
-    :return: list of values for each variable type in order of structure
+    :return: dictionary of values for each variable type in order of structure
     """
-    values = []
+    values = OrderedDict()
     index = 0
     for item in structure_def:
         try:
@@ -523,35 +524,67 @@ def list_from_bytes(byte_list, structure_def):
         except ValueError:
             var, plc_datatype, size, str_len = item
 
-        for i in range(size):
+        if size == 1:  # add straight to dictionary if not array
             if plc_datatype == PLCTYPE_STRING:
                 if str_len is not None:
                     pass
                 else:
                     str_len = PLC_DEFAULT_STRING_SIZE
-                values.append(
-                    bytes(byte_list[index:(index + (str_len + 1))])
-                    .partition(b'\0')[0].decode('utf-8'))
+                values[var] = bytes(byte_list[index:(index + (str_len + 1))]) \
+                    .partition(b'\0')[0].decode('utf-8')
                 index += (str_len + 1)
             elif plc_datatype not in DATATYPE_MAP:
                 raise RuntimeError(
                     'Datatype not found. Check structure definition')
             elif plc_datatype in PLC_8_BYTE_TYPES:
-                values.append(struct.unpack(DATATYPE_MAP[plc_datatype],
-                              bytes(byte_list[index:(index + 8)]))[0])
+                values[var] = struct.unpack(DATATYPE_MAP[plc_datatype],
+                                            bytes(byte_list[index:(index + 8)]))[0]
                 index += 8
             elif plc_datatype in PLC_4_BYTE_TYPES:
-                values.append(struct.unpack(DATATYPE_MAP[plc_datatype],
-                              bytes(byte_list[index:(index + 4)]))[0])
+                values[var] = struct.unpack(DATATYPE_MAP[plc_datatype],
+                                            bytes(byte_list[index:(index + 4)]))[0]
                 index += 4
             elif plc_datatype in PLC_2_BYTE_TYPES:
-                values.append(struct.unpack(DATATYPE_MAP[plc_datatype],
-                              bytes(byte_list[index:(index + 2)]))[0])
+                values[var] = struct.unpack(DATATYPE_MAP[plc_datatype],
+                                            bytes(byte_list[index:(index + 2)]))[0]
                 index += 2
             elif plc_datatype in PLC_BYTE_TYPES:
-                values.append(struct.unpack(DATATYPE_MAP[plc_datatype],
-                              bytes(byte_list[index:(index + 1)]))[0])
+                values[var] = struct.unpack(DATATYPE_MAP[plc_datatype],
+                                            bytes(byte_list[index:(index + 1)]))[0]
                 index += 1
+        else:  # otherwise build array before values then add array to dictionary
+            var_array = []
+            for i in range(size):
+                if plc_datatype == PLCTYPE_STRING:
+                    if str_len is not None:
+                        pass
+                    else:
+                        str_len = PLC_DEFAULT_STRING_SIZE
+                    var_array.append(
+                        bytes(byte_list[index:(index + (str_len + 1))])
+                        .partition(b'\0')[0].decode('utf-8'))
+                    index += (str_len + 1)
+                elif plc_datatype not in DATATYPE_MAP:
+                    raise RuntimeError(
+                        'Datatype not found. Check structure definition')
+                elif plc_datatype in PLC_8_BYTE_TYPES:
+                    var_array.append(struct.unpack(DATATYPE_MAP[plc_datatype],
+                                     bytes(byte_list[index:(index + 8)]))[0])
+                    index += 8
+                elif plc_datatype in PLC_4_BYTE_TYPES:
+                    var_array.append(struct.unpack(DATATYPE_MAP[plc_datatype],
+                                     bytes(byte_list[index:(index + 4)]))[0])
+                    index += 4
+                elif plc_datatype in PLC_2_BYTE_TYPES:
+                    var_array.append(struct.unpack(DATATYPE_MAP[plc_datatype],
+                                     bytes(byte_list[index:(index + 2)]))[0])
+                    index += 2
+                elif plc_datatype in PLC_BYTE_TYPES:
+                    var_array.append(struct.unpack(DATATYPE_MAP[plc_datatype],
+                                     bytes(byte_list[index:(index + 1)]))[0])
+                    index += 1
+            values[var] = var_array
+
     return values
 
 
@@ -775,8 +808,7 @@ class Connection(object):
 
         return None
 
-    def read_structure_by_name(self, data_name, structure_def):
-        # type: (str, Tuple) -> List
+    def read_structure_by_name(self, data_name, structure_def, structure_size=None):
         """Read a structure of multiple types.
 
         :param string data_name: data name
@@ -806,13 +838,16 @@ class Connection(object):
 
             If array of structure use
             'read_structure_by_name(data_name, structure_def * X)'
+        :param structure_size: Optional input if previously calculated using size_of_structure
 
-        :return: list values: list of all values in order of the structure
+        :return: values_dict: ordered dictionary of all values corresponding to the structure
             definition
         """
-        values = self.read_by_name(data_name, size_of_structure(structure_def))
+        if structure_size is None:
+            structure_size = size_of_structure(structure_def)
+        values = self.read_by_name(data_name, structure_size)
         if values is not None:
-            return list_from_bytes(values, structure_def)
+            return dict_from_bytes(values, structure_def)
 
         return None
 
