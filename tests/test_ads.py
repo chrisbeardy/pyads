@@ -176,7 +176,7 @@ class AdsTest(unittest.TestCase):
             ('iVar1', pyads.PLCTYPE_INT, 3),
             ('bVar1', pyads.PLCTYPE_BOOL, 4),
         )
-        self.assertEqual(pyads.size_of_structure(structure_def * 5), c_ubyte*1185)
+        self.assertEqual(pyads.size_of_structure(structure_def, array_size=5), c_ubyte*1185)
 
     def test_dict_from_bytes(self):
         # type: () -> None
@@ -207,7 +207,7 @@ class AdsTest(unittest.TestCase):
             'iVar3': [17, 18, 19, 20, 21, 22, 23],
             'iVar4': 24,
             'iVar5': 25,
-            'iVar6': 27,
+            'iVar6': 26,
             'bVar': [True, False, True, False],
             'iVar7': 27,
             'iVar8': 28
@@ -279,7 +279,7 @@ class AdsTest(unittest.TestCase):
                          pyads.dict_from_bytes(bytes_list, structure_def))
 
         # test another correct definition with array of structure
-        values = [
+        values_list = [
             OrderedDict({
                 'iVar': 32767,
                 'bVar': True,
@@ -317,8 +317,8 @@ class AdsTest(unittest.TestCase):
                       168, 19, 6, 0, 72, 137, 131, 0, 5, 6, 0, 72, 141, 131, 0, 20,
                       6, 0, 72, 137, 131, 8, 5, 6, 0, 72, 141, 131, 96, 20, 6, 210,
                       2, 150, 73]
-        self.assertEqual(values,
-                         pyads.dict_from_bytes(bytes_list, structure_def*3))
+        self.assertEqual(values_list,
+                         pyads.dict_from_bytes(bytes_list, structure_def, array_size=3))
 
         # tests for incorrect definitions
         structure_def = (
